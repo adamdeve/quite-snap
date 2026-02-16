@@ -36,6 +36,20 @@ struct ContentView: View {
             }
             .buttonStyle(.bordered)
 
+            Toggle(
+                "Launch at Login",
+                isOn: Binding(
+                    get: { snapService.isLaunchAtLoginEnabled },
+                    set: { snapService.setLaunchAtLogin($0) }
+                )
+            )
+
+            if let launchAtLoginError = snapService.launchAtLoginError {
+                Text("Launch at Login error: \(launchAtLoginError)")
+                    .font(.caption)
+                    .foregroundStyle(.red)
+            }
+
             VStack(alignment: .leading, spacing: 8) {
                 HStack(spacing: 14) {
                     Text("Horizontal snap area")

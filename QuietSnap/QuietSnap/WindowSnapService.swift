@@ -10,6 +10,7 @@ import ApplicationServices
 import Carbon
 import Combine
 import Foundation
+import ServiceManagement
 
 @MainActor
 final class WindowSnapService: ObservableObject {
@@ -20,6 +21,8 @@ final class WindowSnapService: ObservableObject {
 
     @Published private(set) var isAccessibilityGranted = false
     @Published private(set) var isRunning = false
+    @Published private(set) var isLaunchAtLoginEnabled = false
+    @Published private(set) var launchAtLoginError: String?
     @Published var horizontalSnapMargin: CGFloat {
         didSet {
             let clamped = max(0, horizontalSnapMargin)
@@ -40,6 +43,7 @@ final class WindowSnapService: ObservableObject {
     init() {
         let savedValue = UserDefaults.standard.object(forKey: Preferences.horizontalMarginKey) as? Double
         horizontalSnapMargin = CGFloat(savedValue ?? Preferences.defaultHorizontalMargin)
+        refreshLaunchAtLoginStatus()
     }
 
     deinit {
@@ -89,6 +93,29 @@ final class WindowSnapService: ObservableObject {
         guard let app = NSWorkspace.shared.frontmostApplication else { return }
         guard app.bundleIdentifier != Bundle.main.bundleIdentifier else { return }
         resizeEligibleWindow(for: app, allowMinimized: true)
+    }
+
+    func setLaunchAtLogin(_ enabled: Bool) {
+        let service = SMAppService.mainApp
+        launchAtLoginError = nil
+
+        do {
+            if enabled {
+                if service.status != .enabled {
+                    try service.register()
+                }
+            } else if service.status == .enabled {
+                try service.unregister()
+            }
+            refreshLaunchAtLoginStatus()
+        } catch {
+            launchAtLoginError = error.localizedDescription
+            refreshLaunchAtLoginStatus()
+        }
+    }
+
+    func refreshLaunchAtLoginStatus() {
+        isLaunchAtLoginEnabled = SMAppService.mainApp.status == .enabled
     }
 
     @objc
